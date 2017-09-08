@@ -35,6 +35,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLXML;
 import java.sql.Types;
+import java.util.Map;
 
 import io.confluent.connect.jdbc.util.DateTimeUtils;
 
@@ -45,12 +46,13 @@ import io.confluent.connect.jdbc.util.DateTimeUtils;
 public class DataConverter {
   private static final Logger log = LoggerFactory.getLogger(JdbcSourceTask.class);
 
-  public static Schema convertSchema(String tableName, ResultSetMetaData metadata, boolean mapNumerics)
+  public static Schema convertSchema(String tableName, ResultSetMetaData metadata, Map<String, String> columnDefaults, boolean mapNumerics)
       throws SQLException {
     // TODO: Detect changes to metadata, which will require schema updates
     SchemaBuilder builder = SchemaBuilder.struct().name(tableName);
     for (int col = 1; col <= metadata.getColumnCount(); col++) {
-      addFieldSchema(metadata, col, builder, mapNumerics);
+
+      addFieldSchema(metadata, columnDefaults, col, builder, mapNumerics);
     }
     return builder.build();
   }
@@ -72,8 +74,22 @@ public class DataConverter {
     return struct;
   }
 
+  private static String whitelistDefaultValue (int sqlType, String def) {
+    if (def == null) return null;
+    if (sqlType == SQL_TYPE_DATETIME) {
+      if (def.equals("DATE.NOW()")) {
+        return FLIPP_DATETIME_DEFAULT_SENTINEL;
+      } else {
+        return null;
+
+      }
+
+    }
+
+  }
 
   private static void addFieldSchema(ResultSetMetaData metadata, int col,
+                                     Map<String, String> columnDefaults,
                                      SchemaBuilder builder, boolean mapNumerics)
       throws SQLException {
     // Label is what the query requested the column name be using an "AS" clause, name is the
@@ -83,6 +99,8 @@ public class DataConverter {
     String fieldName = label != null && !label.isEmpty() ? label : name;
 
     int sqlType = metadata.getColumnType(col);
+    boolean hasDefault = columnDefaults.containsKey(name);
+    String defaultValue = whitelistDefaultValue(sqlType, columnDefaults.get(name));
     boolean optional = false;
     if (metadata.isNullable(col) == ResultSetMetaData.columnNullable ||
         metadata.isNullable(col) == ResultSetMetaData.columnNullableUnknown) {
@@ -96,10 +114,17 @@ public class DataConverter {
       }
 
       case Types.BOOLEAN: {
-        if (optional) {
-          builder.field(fieldName, Schema.OPTIONAL_BOOLEAN_SCHEMA);
+
+        if (hasDefault) {
+          Schema s = SchemaBuilder.bool().defaultValue(defaultValue).build();
+          builder.field(fieldName, s);
         } else {
-          builder.field(fieldName, Schema.BOOLEAN_SCHEMA);
+
+          if (optional) {
+            builder.field(fieldName, Schema.OPTIONAL_BOOLEAN_SCHEMA);
+          } else {
+            builder.field(fieldName, Schema.BOOLEAN_SCHEMA);
+          }
         }
         break;
       }
