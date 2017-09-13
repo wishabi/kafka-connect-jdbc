@@ -71,7 +71,6 @@
             <id>confluent</id>
             <name>Confluent</name>
             <url>${confluent.maven.repo}</url>
-            <snapshots><enabled>false</enabled></snapshots>
         </repository>
     </repositories>
 
