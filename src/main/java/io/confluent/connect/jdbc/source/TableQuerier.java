@@ -83,19 +83,15 @@ abstract class TableQuerier implements Comparable<TableQuerier> {
 
       resultSet = executeQuery();
       ResultSetMetaData qr = resultSet.getMetaData();
-      // ugh.
-      assert qr.getColumnCount() > 0;
       ResultSet rs = db.getMetaData().getColumns(db.getCatalog(), db.getSchema(), name, null);
 
       Map defaults = new HashMap<String, String>();
       while (rs.next()) {
         String columnName = rs.getString("COLUMN_NAME");
-
         String defaultValue = rs.getString("COLUMN_DEF");
         if (null != defaultValue) {
           defaults.put(columnName, defaultValue);
         }
-
       }
 
       schema = DataConverter.convertSchema(name, qr, defaults, mapNumerics);

@@ -74,30 +74,9 @@ public class DataConverter {
     return struct;
   }
 
-  private static String whitelistDefaultValue (int sqlType, String defaultValue) {
+  private static String whitelistDefaultValue (String defaultValue) {
     if (defaultValue == null) return null;
-    if (defaultValue.toLowerCase().contains("generated")) return null;
     if (defaultValue.toLowerCase().startsWith("autoincrement")) return null;
-//    switch (sqlType) {
-//      case Types.DATE: {
-//        if (defaultValue.equalsIgnoreCase("CURRENT_TIMESTAMP")){
-//          return "1970-01-01";
-//        }
-//        break;
-//      }
-//      case (Types.TIME): {
-//        if (defaultValue.equalsIgnoreCase("CURRENT_TIMESTAMP")){
-//          return "1970-01-01";
-//        }
-//        break;
-//      }
-//      case (Types.TIMESTAMP): {
-//        if (defaultValue.equalsIgnoreCase("CURRENT_TIMESTAMP")){
-//          return "1970-01-01";
-//        }
-//        break;
-//      }
-//    }
     return defaultValue;
   }
 
@@ -112,11 +91,9 @@ public class DataConverter {
     String fieldName = label != null && !label.isEmpty() ? label : name;
 
     int sqlType = metadata.getColumnType(col);
-    boolean hasDefault = columnDefaults.containsKey(name);
-    String defaultValue = hasDefault ? whitelistDefaultValue(sqlType, columnDefaults.get(name)) : null;
-    if (defaultValue == null){
-      hasDefault = false;
-    }
+
+    String defaultValue = whitelistDefaultValue(columnDefaults.get(name));
+    boolean hasDefault = (defaultValue != null);
 
     boolean optional = false;
     if (metadata.isNullable(col) == ResultSetMetaData.columnNullable ||
@@ -133,7 +110,7 @@ public class DataConverter {
 
       case Types.BOOLEAN: {
         if (hasDefault) {
-          boolean castedDefault =  Boolean.parseBoolean(defaultValue);
+          boolean castedDefault = Boolean.parseBoolean(defaultValue);
           schema = SchemaBuilder.bool().defaultValue(castedDefault).build();
         } else {
           schema = (optional) ? Schema.OPTIONAL_BOOLEAN_SCHEMA : Schema.BOOLEAN_SCHEMA;
