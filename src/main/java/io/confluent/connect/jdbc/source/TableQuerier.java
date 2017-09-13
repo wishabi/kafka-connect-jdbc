@@ -20,8 +20,11 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.source.SourceRecord;
 import java.util.Map;
 import java.util.HashMap;
-
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.ResultSetMetaData;
 
 /**
  * TableQuerier executes queries against a specific table. Implementations handle different types

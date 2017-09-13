@@ -74,7 +74,7 @@ public class DataConverter {
     return struct;
   }
 
-  private static String whitelistDefaultValue (String defaultValue) {
+  private static String whitelistDefaultValue(String defaultValue) {
     if (defaultValue == null) return null;
     if (defaultValue.toLowerCase().startsWith("autoincrement")) return null;
     return defaultValue;
@@ -251,28 +251,28 @@ public class DataConverter {
           int precision = metadata.getPrecision(col);
           if (metadata.getScale(col) == 0 && precision < 19) { // integer
             if (precision > 9) {
-              if (hasDefault){
+              if (hasDefault) {
                 long parsedDefault = Long.parseLong(defaultValue);
                 schema = SchemaBuilder.int64().defaultValue(parsedDefault).build();
               } else {
                 schema = (optional) ? Schema.OPTIONAL_INT64_SCHEMA : Schema.INT64_SCHEMA;
               }
             } else if (precision > 4) {
-              if (hasDefault){
+              if (hasDefault) {
                 int parsedDefault = Integer.parseInt(defaultValue);
                 schema = SchemaBuilder.int32().defaultValue(parsedDefault).build();
               } else {
                 schema = (optional) ? Schema.OPTIONAL_INT32_SCHEMA : Schema.INT32_SCHEMA;
               }
             } else if (precision > 2) {
-              if (hasDefault){
+              if (hasDefault) {
                 short parsedDefault = Short.parseShort(defaultValue);
                 schema = SchemaBuilder.int16().defaultValue(parsedDefault).build();
               } else {
                 schema = (optional) ? Schema.OPTIONAL_INT16_SCHEMA : Schema.INT16_SCHEMA;
               }
             } else {
-              if (hasDefault){
+              if (hasDefault) {
                 byte parsedDefault = Byte.parseByte(defaultValue);
                 schema = SchemaBuilder.int8().defaultValue(parsedDefault).build();
               } else {
