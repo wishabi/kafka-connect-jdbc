@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.URL;
 import java.sql.Blob;
 import java.sql.Clob;
@@ -74,9 +75,33 @@ public class DataConverter {
     return struct;
   }
 
-  private static String whitelistDefaultValue(String defaultValue) {
+  private static String whitelistDefaultValue(int SqlType, String defaultValue) {
     if (defaultValue == null) return null;
     if (defaultValue.toLowerCase().startsWith("autoincrement")) return null;
+
+    switch (SqlType) {
+      case Types.TIMESTAMP: {
+        if (defaultValue.toLowerCase().contains("current_timestamp")) {
+          return "2000-01-01 00:00:00";
+        }
+        break;
+      }
+
+      case Types.DATE: {
+        if (defaultValue.toLowerCase().contains("current_timestamp")) {
+          return "2000-01-01";
+        }
+        break;
+      }
+
+      case Types.TIME: {
+        if (defaultValue.toLowerCase().contains("current_timestamp")) {
+          return "00:00:00";
+        }
+        break;
+      }
+    }
+
     return defaultValue;
   }
 
@@ -92,7 +117,7 @@ public class DataConverter {
 
     int sqlType = metadata.getColumnType(col);
 
-    String defaultValue = whitelistDefaultValue(columnDefaults.get(name));
+    String defaultValue = whitelistDefaultValue(sqlType, columnDefaults.get(name));
     boolean hasDefault = (defaultValue != null);
 
     boolean optional = false;
@@ -284,16 +309,19 @@ public class DataConverter {
           }
         }
 
-      //TODO: ???
+
       case Types.DECIMAL: {
         int scale = metadata.getScale(col);
         if (scale == -127) //NUMBER without precision defined for OracleDB
           scale = 127;
         SchemaBuilder fieldBuilder = Decimal.builder(scale);
-        if (optional) {
+        if (hasDefault) {
+          long parsedDefault = Long.parseLong(defaultValue);
+          BigDecimal scaledDefault = BigDecimal.valueOf(parsedDefault, scale);
+          fieldBuilder.defaultValue(scaledDefault).build();
+        } else if (optional) {
           fieldBuilder.optional();
         }
-
         builder.field(fieldName, fieldBuilder.build());
         break;
       }
@@ -325,18 +353,12 @@ public class DataConverter {
       case Types.BLOB:
       case Types.VARBINARY:
       case Types.LONGVARBINARY: {
-        if (optional) {
-          builder.field(fieldName, Schema.OPTIONAL_BYTES_SCHEMA);
+        if (hasDefault) {
+          schema = SchemaBuilder.bytes().defaultValue(defaultValue.getBytes()).build();
         } else {
-          builder.field(fieldName, Schema.BYTES_SCHEMA);
+          schema = (optional) ? Schema.OPTIONAL_BYTES_SCHEMA : Schema.BYTES_SCHEMA;
         }
-//        if (hasDefault) {
-////          byte parsedDefault = Byte.parseByte(defaultValue);
-//          schema = SchemaBuilder.bytes().defaultValue(defaultValue).build();
-//        } else {
-//          schema = (optional) ? Schema.OPTIONAL_BYTES_SCHEMA : Schema.BYTES_SCHEMA;
-//        }
-//        builder.field(fieldName, schema);
+        builder.field(fieldName, schema);
         break;
       }
 

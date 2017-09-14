@@ -98,7 +98,8 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
 
   @Test
   public void testDefaultInt() throws Exception {
-    typeConversion("INTEGER", false, 1, SchemaBuilder.int32().defaultValue(1).build(), 1, "1");
+    typeConversion("INTEGER", false, 1,
+            SchemaBuilder.int32().defaultValue(1).build(), 1, "1");
   }
 
   @Test
@@ -227,6 +228,12 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   }
 
   @Test
+  public void testDefaultBinary() throws Exception {
+    typeConversion("CHAR(5) FOR BIT DATA", false, "a".getBytes(),
+            SchemaBuilder.bytes().defaultValue("x'97'".getBytes()).build(), "a    ".getBytes(), "x'97'");
+  }
+
+  @Test
   public void testNumeric() throws Exception {
     typeConversion("NUMERIC(1)", false,
             new EmbeddedDerby.Literal("CAST (1 AS NUMERIC)"),
@@ -257,6 +264,14 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
                    new BigDecimal(new BigInteger("12345"), 2));
     typeConversion("DECIMAL(5,2)", true, null, Decimal.builder(2).optional().build(),
                    null);
+  }
+
+  @Test
+  public void testDefaultDecimal() throws Exception {
+    BigDecimal defaultVal = new BigDecimal(new BigInteger("100"), 2);
+    typeConversion("DECIMAL(5,2)", false,
+            new EmbeddedDerby.Literal("CAST (123.45 AS DECIMAL(5,2))"),
+            Decimal.builder(2).defaultValue(defaultVal).build(),new BigDecimal(new BigInteger("12345"), 2), "100");
   }
 
   @Test
@@ -346,7 +361,7 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
     expected.setTimeZone(TimeZone.getTimeZone("UTC"));
     java.sql.Timestamp defaultValue = java.sql.Timestamp.valueOf("2000-01-01 00:00:00");
     typeConversion("TIMESTAMP", false, "1977-02-13 23:03:20",
-            Timestamp.builder().defaultValue(defaultValue).build(), expected.getTime(), "'2000-01-01 00:00:00'");
+            Timestamp.builder().defaultValue(defaultValue).build(), expected.getTime(), "CURRENT_TIMESTAMP");
   }
 
   // Derby has an XML type, but the JDBC driver doesn't implement any of the type bindings,
@@ -401,12 +416,20 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
     assertEquals(1, fields.size());
 
     Schema fieldSchema = fields.get(0).schema();
-    assertEquals(expectedFieldSchema, fieldSchema);
     if (expectedValue instanceof byte[]) {
+      if (expectedFieldSchema.defaultValue() != null) {
+        assertTrue(fieldSchema.defaultValue() instanceof byte[]);
+        assertEquals(ByteBuffer.wrap((byte[])fieldSchema.defaultValue()),
+                ByteBuffer.wrap((byte[])expectedFieldSchema.defaultValue()));
+      } else {
+        assertEquals(expectedFieldSchema, fieldSchema);
+      }
+
       assertTrue(value.get(fields.get(0)) instanceof byte[]);
       assertEquals(ByteBuffer.wrap((byte[])expectedValue),
                    ByteBuffer.wrap((byte[])value.get(fields.get(0))));
     } else {
+      assertEquals(expectedFieldSchema, fieldSchema);
       assertEquals(expectedValue, value.get(fields.get(0)));
     }
   }
