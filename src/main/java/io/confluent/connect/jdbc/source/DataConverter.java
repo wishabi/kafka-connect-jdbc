@@ -27,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.net.URL;
 import java.sql.Blob;
 import java.sql.Clob;
@@ -35,6 +36,7 @@ import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.SQLXML;
 import java.sql.Types;
+import java.util.Map;
 
 import io.confluent.connect.jdbc.util.DateTimeUtils;
 
@@ -45,12 +47,13 @@ import io.confluent.connect.jdbc.util.DateTimeUtils;
 public class DataConverter {
   private static final Logger log = LoggerFactory.getLogger(JdbcSourceTask.class);
 
-  public static Schema convertSchema(String tableName, ResultSetMetaData metadata, boolean mapNumerics)
+  public static Schema convertSchema(String tableName, ResultSetMetaData metadata, Map<String, String> columnDefaults, boolean mapNumerics)
       throws SQLException {
     // TODO: Detect changes to metadata, which will require schema updates
     SchemaBuilder builder = SchemaBuilder.struct().name(tableName);
     for (int col = 1; col <= metadata.getColumnCount(); col++) {
-      addFieldSchema(metadata, col, builder, mapNumerics);
+
+      addFieldSchema(metadata, col, columnDefaults, builder, mapNumerics);
     }
     return builder.build();
   }
@@ -72,8 +75,38 @@ public class DataConverter {
     return struct;
   }
 
+  private static String whitelistDefaultValue(int SqlType, String defaultValue) {
+    if (defaultValue == null) return null;
+    if (defaultValue.toLowerCase().startsWith("autoincrement")) return null;
+
+    switch (SqlType) {
+      case Types.TIMESTAMP: {
+        if (defaultValue.toLowerCase().contains("current_timestamp")) {
+          return "2000-01-01 00:00:00";
+        }
+        break;
+      }
+
+      case Types.DATE: {
+        if (defaultValue.toLowerCase().contains("current_timestamp")) {
+          return "2000-01-01";
+        }
+        break;
+      }
+
+      case Types.TIME: {
+        if (defaultValue.toLowerCase().contains("current_timestamp")) {
+          return "00:00:00";
+        }
+        break;
+      }
+    }
+
+    return defaultValue;
+  }
 
   private static void addFieldSchema(ResultSetMetaData metadata, int col,
+                                     Map<String, String> columnDefaults,
                                      SchemaBuilder builder, boolean mapNumerics)
       throws SQLException {
     // Label is what the query requested the column name be using an "AS" clause, name is the
@@ -83,12 +116,17 @@ public class DataConverter {
     String fieldName = label != null && !label.isEmpty() ? label : name;
 
     int sqlType = metadata.getColumnType(col);
+
+    String defaultValue = whitelistDefaultValue(sqlType, columnDefaults.get(name));
+    boolean hasDefault = (defaultValue != null);
+
     boolean optional = false;
     if (metadata.isNullable(col) == ResultSetMetaData.columnNullable ||
         metadata.isNullable(col) == ResultSetMetaData.columnNullableUnknown) {
       optional = true;
     }
 
+    Schema schema;
     switch (sqlType) {
       case Types.NULL: {
         log.warn("JDBC type {} not currently supported", sqlType);
@@ -96,26 +134,38 @@ public class DataConverter {
       }
 
       case Types.BOOLEAN: {
-        if (optional) {
-          builder.field(fieldName, Schema.OPTIONAL_BOOLEAN_SCHEMA);
+        if (hasDefault) {
+          boolean castedDefault = Boolean.parseBoolean(defaultValue);
+          schema = SchemaBuilder.bool().defaultValue(castedDefault).build();
         } else {
-          builder.field(fieldName, Schema.BOOLEAN_SCHEMA);
+          schema = (optional) ? Schema.OPTIONAL_BOOLEAN_SCHEMA : Schema.BOOLEAN_SCHEMA;
         }
+        builder.field(fieldName, schema);
         break;
       }
 
       // ints <= 8 bits
       case Types.BIT: {
-        if (optional) {
-          builder.field(fieldName, Schema.OPTIONAL_INT8_SCHEMA);
+        if (hasDefault) {
+          byte castedDefault = Byte.parseByte(defaultValue);
+          schema = SchemaBuilder.int8().defaultValue(castedDefault).build();
         } else {
-          builder.field(fieldName, Schema.INT8_SCHEMA);
+          schema = (optional) ? Schema.OPTIONAL_INT8_SCHEMA : Schema.INT8_SCHEMA;
         }
+        builder.field(fieldName, schema);
         break;
       }
 
       case Types.TINYINT: {
-        if (optional) {
+        if (hasDefault) {
+          if (metadata.isSigned(col)) {
+            short castedDefault = Short.parseShort(defaultValue);
+            builder.field(fieldName, SchemaBuilder.int8().defaultValue(castedDefault).build());
+          } else {
+            int castedDefault = Integer.parseInt(defaultValue);
+            builder.field(fieldName, SchemaBuilder.int16().defaultValue(castedDefault).build());
+          }
+        } else if (optional) {
           if (metadata.isSigned(col)) {
             builder.field(fieldName, Schema.OPTIONAL_INT8_SCHEMA);
           } else {
@@ -133,7 +183,15 @@ public class DataConverter {
 
       // 16 bit ints
       case Types.SMALLINT: {
-        if (optional) {
+        if (hasDefault) {
+          if (metadata.isSigned(col)) {
+            short parsedDefault = Short.parseShort(defaultValue);
+            builder.field(fieldName, SchemaBuilder.int16().defaultValue(parsedDefault).build());
+          } else {
+            int parsedDefault = Integer.parseInt(defaultValue);
+            builder.field(fieldName, SchemaBuilder.int32().defaultValue(parsedDefault).build());
+          }
+        } else if (optional) {
           if (metadata.isSigned(col)) {
             builder.field(fieldName, Schema.OPTIONAL_INT16_SCHEMA);
           } else {
@@ -151,7 +209,15 @@ public class DataConverter {
 
       // 32 bit ints
       case Types.INTEGER: {
-        if (optional) {
+        if (hasDefault) {
+          if (metadata.isSigned(col)) {
+            int parsedDefault = Integer.parseInt(defaultValue);
+            builder.field(fieldName, SchemaBuilder.int32().defaultValue(parsedDefault).build());
+          } else {
+            long parsedDefault = Long.parseLong(defaultValue);
+            builder.field(fieldName, SchemaBuilder.int64().defaultValue(parsedDefault).build());
+          }
+        } else if (optional) {
           if (metadata.isSigned(col)) {
             builder.field(fieldName, Schema.OPTIONAL_INT32_SCHEMA);
           } else {
@@ -169,21 +235,25 @@ public class DataConverter {
 
       // 64 bit ints
       case Types.BIGINT: {
-        if (optional) {
-          builder.field(fieldName, Schema.OPTIONAL_INT64_SCHEMA);
+        if (hasDefault) {
+          long parsedDefault = Long.parseLong(defaultValue);
+          schema = SchemaBuilder.int64().defaultValue(parsedDefault).build();
         } else {
-          builder.field(fieldName, Schema.INT64_SCHEMA);
+          schema = (optional) ? Schema.OPTIONAL_INT64_SCHEMA : Schema.INT64_SCHEMA;
         }
+        builder.field(fieldName, schema);
         break;
       }
 
       // REAL is a single precision floating point value, i.e. a Java float
       case Types.REAL: {
-        if (optional) {
-          builder.field(fieldName, Schema.OPTIONAL_FLOAT32_SCHEMA);
+        if (hasDefault) {
+          float parsedDefault = Float.parseFloat(defaultValue);
+          schema = SchemaBuilder.float32().defaultValue(parsedDefault).build();
         } else {
-          builder.field(fieldName, Schema.FLOAT32_SCHEMA);
+          schema = (optional) ? Schema.OPTIONAL_FLOAT32_SCHEMA : Schema.FLOAT32_SCHEMA;
         }
+        builder.field(fieldName, schema);
         break;
       }
 
@@ -191,11 +261,13 @@ public class DataConverter {
       // for single precision
       case Types.FLOAT:
       case Types.DOUBLE: {
-        if (optional) {
-          builder.field(fieldName, Schema.OPTIONAL_FLOAT64_SCHEMA);
+        if (hasDefault) {
+          double parsedDefault = Double.parseDouble(defaultValue);
+          schema = SchemaBuilder.float64().defaultValue(parsedDefault).build();
         } else {
-          builder.field(fieldName, Schema.FLOAT64_SCHEMA);
+          schema = (optional) ? Schema.OPTIONAL_FLOAT64_SCHEMA : Schema.FLOAT64_SCHEMA;
         }
+        builder.field(fieldName, schema);
         break;
       }
 
@@ -203,31 +275,51 @@ public class DataConverter {
         if (mapNumerics) {
           int precision = metadata.getPrecision(col);
           if (metadata.getScale(col) == 0 && precision < 19) { // integer
-            Schema schema;
             if (precision > 9) {
-              schema = (optional) ? Schema.OPTIONAL_INT64_SCHEMA :
-                      Schema.INT64_SCHEMA;
+              if (hasDefault) {
+                long parsedDefault = Long.parseLong(defaultValue);
+                schema = SchemaBuilder.int64().defaultValue(parsedDefault).build();
+              } else {
+                schema = (optional) ? Schema.OPTIONAL_INT64_SCHEMA : Schema.INT64_SCHEMA;
+              }
             } else if (precision > 4) {
-              schema = (optional) ? Schema.OPTIONAL_INT32_SCHEMA :
-                      Schema.INT32_SCHEMA;
+              if (hasDefault) {
+                int parsedDefault = Integer.parseInt(defaultValue);
+                schema = SchemaBuilder.int32().defaultValue(parsedDefault).build();
+              } else {
+                schema = (optional) ? Schema.OPTIONAL_INT32_SCHEMA : Schema.INT32_SCHEMA;
+              }
             } else if (precision > 2) {
-              schema = (optional) ? Schema.OPTIONAL_INT16_SCHEMA :
-                      Schema.INT16_SCHEMA;
+              if (hasDefault) {
+                short parsedDefault = Short.parseShort(defaultValue);
+                schema = SchemaBuilder.int16().defaultValue(parsedDefault).build();
+              } else {
+                schema = (optional) ? Schema.OPTIONAL_INT16_SCHEMA : Schema.INT16_SCHEMA;
+              }
             } else {
-              schema = (optional) ? Schema.OPTIONAL_INT8_SCHEMA :
-                      Schema.INT8_SCHEMA;
+              if (hasDefault) {
+                byte parsedDefault = Byte.parseByte(defaultValue);
+                schema = SchemaBuilder.int8().defaultValue(parsedDefault).build();
+              } else {
+                schema = (optional) ? Schema.OPTIONAL_INT8_SCHEMA : Schema.INT8_SCHEMA;
+              }
             }
             builder.field(fieldName, schema);
             break;
           }
         }
 
+
       case Types.DECIMAL: {
         int scale = metadata.getScale(col);
         if (scale == -127) //NUMBER without precision defined for OracleDB
           scale = 127;
         SchemaBuilder fieldBuilder = Decimal.builder(scale);
-        if (optional) {
+        if (hasDefault) {
+          long parsedDefault = Long.parseLong(defaultValue);
+          BigDecimal scaledDefault = BigDecimal.valueOf(parsedDefault, scale);
+          fieldBuilder.defaultValue(scaledDefault).build();
+        } else if (optional) {
           fieldBuilder.optional();
         }
         builder.field(fieldName, fieldBuilder.build());
@@ -246,11 +338,12 @@ public class DataConverter {
       case Types.SQLXML: {
         // Some of these types will have fixed size, but we drop this from the schema conversion
         // since only fixed byte arrays can have a fixed size
-        if (optional) {
-          builder.field(fieldName, Schema.OPTIONAL_STRING_SCHEMA);
+        if (hasDefault) {
+          schema = SchemaBuilder.string().defaultValue(defaultValue).build();
         } else {
-          builder.field(fieldName, Schema.STRING_SCHEMA);
+          schema = (optional) ? Schema.OPTIONAL_STRING_SCHEMA : Schema.STRING_SCHEMA;
         }
+        builder.field(fieldName, schema);
         break;
       }
 
@@ -260,18 +353,21 @@ public class DataConverter {
       case Types.BLOB:
       case Types.VARBINARY:
       case Types.LONGVARBINARY: {
-        if (optional) {
-          builder.field(fieldName, Schema.OPTIONAL_BYTES_SCHEMA);
+        if (hasDefault) {
+          schema = SchemaBuilder.bytes().defaultValue(defaultValue.getBytes()).build();
         } else {
-          builder.field(fieldName, Schema.BYTES_SCHEMA);
+          schema = (optional) ? Schema.OPTIONAL_BYTES_SCHEMA : Schema.BYTES_SCHEMA;
         }
+        builder.field(fieldName, schema);
         break;
       }
 
       // Date is day + moth + year
       case Types.DATE: {
         SchemaBuilder dateSchemaBuilder = Date.builder();
-        if (optional) {
+        if (hasDefault) {
+          dateSchemaBuilder.defaultValue(java.sql.Date.valueOf(defaultValue.replace("'", "")));
+        } else if (optional) {
           dateSchemaBuilder.optional();
         }
         builder.field(fieldName, dateSchemaBuilder.build());
@@ -281,7 +377,9 @@ public class DataConverter {
       // Time is a time of day -- hour, minute, seconds, nanoseconds
       case Types.TIME: {
         SchemaBuilder timeSchemaBuilder = Time.builder();
-        if (optional) {
+        if (hasDefault) {
+          timeSchemaBuilder.defaultValue(java.sql.Time.valueOf(defaultValue.replace("'", "")));
+        } else if (optional) {
           timeSchemaBuilder.optional();
         }
         builder.field(fieldName, timeSchemaBuilder.build());
@@ -291,7 +389,9 @@ public class DataConverter {
       // Timestamp is a date + time
       case Types.TIMESTAMP: {
         SchemaBuilder tsSchemaBuilder = Timestamp.builder();
-        if (optional) {
+        if (hasDefault) {
+          tsSchemaBuilder.defaultValue(java.sql.Timestamp.valueOf(defaultValue.replace("'", "")));
+        } else if (optional) {
           tsSchemaBuilder.optional();
         }
         builder.field(fieldName, tsSchemaBuilder.build());

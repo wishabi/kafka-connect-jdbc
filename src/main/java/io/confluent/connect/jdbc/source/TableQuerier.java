@@ -18,11 +18,13 @@ package io.confluent.connect.jdbc.source;
 
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.source.SourceRecord;
-
+import java.util.Map;
+import java.util.HashMap;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.ResultSetMetaData;
 
 /**
  * TableQuerier executes queries against a specific table. Implementations handle different types
@@ -81,8 +83,21 @@ abstract class TableQuerier implements Comparable<TableQuerier> {
   public void maybeStartQuery(Connection db) throws SQLException {
     if (resultSet == null) {
       stmt = getOrCreatePreparedStatement(db);
+
       resultSet = executeQuery();
-      schema = DataConverter.convertSchema(name, resultSet.getMetaData(), mapNumerics);
+      ResultSetMetaData qr = resultSet.getMetaData();
+      ResultSet rs = db.getMetaData().getColumns(db.getCatalog(), db.getSchema(), name, null);
+
+      Map defaults = new HashMap<String, String>();
+      while (rs.next()) {
+        String columnName = rs.getString("COLUMN_NAME");
+        String defaultValue = rs.getString("COLUMN_DEF");
+        if (null != defaultValue) {
+          defaults.put(columnName, defaultValue);
+        }
+      }
+
+      schema = DataConverter.convertSchema(name, qr, defaults, mapNumerics);
     }
   }
 

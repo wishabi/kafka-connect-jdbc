@@ -16,14 +16,8 @@
 
 package io.confluent.connect.jdbc.source;
 
-import org.apache.kafka.connect.data.Date;
-import org.apache.kafka.connect.data.Decimal;
-import org.apache.kafka.connect.data.Field;
-import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.*;
 import org.apache.kafka.connect.data.Schema.Type;
-import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.data.Time;
-import org.apache.kafka.connect.data.Timestamp;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.After;
 import org.junit.Before;
@@ -71,6 +65,11 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   }
 
   @Test
+  public void testDefaultBoolean() throws Exception {
+    typeConversion("BOOLEAN", false, false, SchemaBuilder.bool().defaultValue(true).build(), false, "true");
+  }
+
+  @Test
   public void testSmallInt() throws Exception {
     typeConversion("SMALLINT", false, 1, Schema.INT16_SCHEMA, (short) 1);
   }
@@ -79,6 +78,11 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   public void testNullableSmallInt() throws Exception {
     typeConversion("SMALLINT", true, 1, Schema.OPTIONAL_INT16_SCHEMA, (short) 1);
     typeConversion("SMALLINT", true, null, Schema.OPTIONAL_INT16_SCHEMA, null);
+  }
+
+  @Test
+  public void testDefaultSmallInt() throws Exception {
+    typeConversion("SMALLINT", false, 1, SchemaBuilder.int16().defaultValue((short) 1).build(), (short) 1, "1");
   }
 
   @Test
@@ -93,6 +97,12 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   }
 
   @Test
+  public void testDefaultInt() throws Exception {
+    typeConversion("INTEGER", false, 1,
+            SchemaBuilder.int32().defaultValue(1).build(), 1, "1");
+  }
+
+  @Test
   public void testBigInt() throws Exception {
     typeConversion("BIGINT", false, Long.MAX_VALUE, Schema.INT64_SCHEMA, Long.MAX_VALUE);
   }
@@ -101,6 +111,11 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   public void testNullableBigInt() throws Exception {
     typeConversion("BIGINT", true, Long.MAX_VALUE, Schema.OPTIONAL_INT64_SCHEMA, Long.MAX_VALUE);
     typeConversion("BIGINT", true, null, Schema.OPTIONAL_INT64_SCHEMA, null);
+  }
+
+  @Test
+  public void testDefaultBigInt() throws Exception {
+    typeConversion("BIGINT", true, 1, SchemaBuilder.int64().defaultValue((long) 1).build(), (long) 1, "1");
   }
 
   @Test
@@ -115,6 +130,11 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   }
 
   @Test
+  public void testDefaultReal() throws Exception {
+    typeConversion("REAL", false, 1.1, SchemaBuilder.float32().defaultValue((float) 1).build(), (float) 1.1, "1");
+  }
+
+  @Test
   public void testDouble() throws Exception {
     typeConversion("DOUBLE", false, 1, Schema.FLOAT64_SCHEMA, 1.0);
   }
@@ -123,6 +143,11 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   public void testNullableDouble() throws Exception {
     typeConversion("DOUBLE", true, 1, Schema.OPTIONAL_FLOAT64_SCHEMA, 1.0);
     typeConversion("DOUBLE", true, null, Schema.OPTIONAL_FLOAT64_SCHEMA, null);
+  }
+
+  @Test
+  public void testDefaultDouble() throws Exception {
+    typeConversion("DOUBLE", false, 1.1, SchemaBuilder.float64().defaultValue( 1.1).build(), 1.1, "1.1");
   }
 
   @Test
@@ -139,6 +164,11 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   }
 
   @Test
+  public void testDefaultChar() throws Exception {
+    typeConversion("CHAR(5)", false, "a", SchemaBuilder.string().defaultValue("'b'").build(), "a    ", "'b'");
+  }
+
+  @Test
   public void testVarChar() throws Exception {
     // Converted to string, so fixed size not checked
     typeConversion("VARCHAR(5)", false, "a", Schema.STRING_SCHEMA, "a");
@@ -149,6 +179,11 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
     // Converted to string, so fixed size not checked
     typeConversion("VARCHAR(5)", true, "a", Schema.OPTIONAL_STRING_SCHEMA, "a");
     typeConversion("VARCHAR(5)", true, null, Schema.OPTIONAL_STRING_SCHEMA, null);
+  }
+
+  @Test
+  public void testDefaultVarChar() throws Exception {
+    typeConversion("VARCHAR(5)", false, "b", SchemaBuilder.string().defaultValue("'a'").build(), "b", "'a'");
   }
 
   @Test
@@ -193,6 +228,12 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   }
 
   @Test
+  public void testDefaultBinary() throws Exception {
+    typeConversion("CHAR(5) FOR BIT DATA", false, "a".getBytes(),
+            SchemaBuilder.bytes().defaultValue("x'97'".getBytes()).build(), "a    ".getBytes(), "x'97'");
+  }
+
+  @Test
   public void testNumeric() throws Exception {
     typeConversion("NUMERIC(1)", false,
             new EmbeddedDerby.Literal("CAST (1 AS NUMERIC)"),
@@ -226,6 +267,14 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   }
 
   @Test
+  public void testDefaultDecimal() throws Exception {
+    BigDecimal defaultVal = new BigDecimal(new BigInteger("100"), 2);
+    typeConversion("DECIMAL(5,2)", false,
+            new EmbeddedDerby.Literal("CAST (123.45 AS DECIMAL(5,2))"),
+            Decimal.builder(2).defaultValue(defaultVal).build(),new BigDecimal(new BigInteger("12345"), 2), "100");
+  }
+
+  @Test
   public void testDate() throws Exception {
     GregorianCalendar expected = new GregorianCalendar(1977, Calendar.FEBRUARY, 13, 0, 0, 0);
     expected.setTimeZone(TimeZone.getTimeZone("UTC"));
@@ -244,6 +293,15 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
     typeConversion("DATE", true, null,
                    Date.builder().optional().build(),
                    null);
+  }
+
+  @Test
+  public void testDefaultDate() throws Exception {
+    GregorianCalendar expected = new GregorianCalendar(2017, Calendar.JANUARY, 01, 0, 0, 0);
+    expected.setTimeZone(TimeZone.getTimeZone("UTC"));
+    java.sql.Date defaultValue = java.sql.Date.valueOf("1990-01-01");
+    typeConversion("DATE", false, "2017-01-01",
+            Date.builder().defaultValue(defaultValue).build(), expected.getTime(), "'1990-01-01'");
   }
 
   @Test
@@ -268,6 +326,15 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   }
 
   @Test
+  public void testDefaultTime() throws Exception {
+    GregorianCalendar expected = new GregorianCalendar(1970, Calendar.JANUARY, 1, 23, 3, 20);
+    expected.setTimeZone(TimeZone.getTimeZone("UTC"));
+    java.sql.Time defaultValue = java.sql.Time.valueOf("00:00:00");
+    typeConversion("TIME", true, "23:03:20",
+            Time.builder().defaultValue(defaultValue).build(), expected.getTime(),  "'00:00:00'");
+  }
+
+  @Test
   public void testTimestamp() throws Exception {
     GregorianCalendar expected = new GregorianCalendar(1977, Calendar.FEBRUARY, 13, 23, 3, 20);
     expected.setTimeZone(TimeZone.getTimeZone("UTC"));
@@ -288,6 +355,15 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
                    null);
   }
 
+  @Test
+  public void testDefaultTimestamp() throws Exception {
+    GregorianCalendar expected = new GregorianCalendar(1977, Calendar.FEBRUARY, 13, 23, 3, 20);
+    expected.setTimeZone(TimeZone.getTimeZone("UTC"));
+    java.sql.Timestamp defaultValue = java.sql.Timestamp.valueOf("2000-01-01 00:00:00");
+    typeConversion("TIMESTAMP", false, "1977-02-13 23:03:20",
+            Timestamp.builder().defaultValue(defaultValue).build(), expected.getTime(), "CURRENT_TIMESTAMP");
+  }
+
   // Derby has an XML type, but the JDBC driver doesn't implement any of the type bindings,
   // returning strings instead, so the XML type is not tested here
 
@@ -298,6 +374,21 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
     if (!nullable) {
       sqlColumnSpec += " NOT NULL";
     }
+    db.createTable(SINGLE_TABLE_NAME, "id", sqlColumnSpec);
+    db.insert(SINGLE_TABLE_NAME, "id", sqlValue);
+    List<SourceRecord> records = task.poll();
+    validateRecords(records, convertedSchema, convertedValue);
+    db.dropTable(SINGLE_TABLE_NAME);
+  }
+
+  private void typeConversion(String sqlType, boolean nullable,
+                              Object sqlValue, Schema convertedSchema,
+                              Object convertedValue, String defaultValue) throws Exception {
+    String sqlColumnSpec = sqlType;
+    if (!nullable) {
+      sqlColumnSpec += " NOT NULL";
+    }
+    sqlColumnSpec += " DEFAULT " + defaultValue;
     db.createTable(SINGLE_TABLE_NAME, "id", sqlColumnSpec);
     db.insert(SINGLE_TABLE_NAME, "id", sqlValue);
     List<SourceRecord> records = task.poll();
@@ -325,12 +416,20 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
     assertEquals(1, fields.size());
 
     Schema fieldSchema = fields.get(0).schema();
-    assertEquals(expectedFieldSchema, fieldSchema);
     if (expectedValue instanceof byte[]) {
+      if (expectedFieldSchema.defaultValue() != null) {
+        assertTrue(fieldSchema.defaultValue() instanceof byte[]);
+        assertEquals(ByteBuffer.wrap((byte[])fieldSchema.defaultValue()),
+                ByteBuffer.wrap((byte[])expectedFieldSchema.defaultValue()));
+      } else {
+        assertEquals(expectedFieldSchema, fieldSchema);
+      }
+
       assertTrue(value.get(fields.get(0)) instanceof byte[]);
       assertEquals(ByteBuffer.wrap((byte[])expectedValue),
                    ByteBuffer.wrap((byte[])value.get(fields.get(0))));
     } else {
+      assertEquals(expectedFieldSchema, fieldSchema);
       assertEquals(expectedValue, value.get(fields.get(0)));
     }
   }
