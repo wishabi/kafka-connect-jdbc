@@ -21,10 +21,10 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.confluent</groupId>
-    <artifactId>kafka-connect-jdbc</artifactId>
+    <artifactId>kafka-connect-jdbc-flipp-defaults</artifactId>
     <packaging>jar</packaging>
     <version>3.3.0</version>
-    <name>kafka-connect-jdbc</name>
+    <name>kafka-connect-jdbc-flipp-defaults</name>
     <organization>
         <name>Confluent, Inc.</name>
         <url>http://confluent.io</url>
@@ -43,9 +43,9 @@
     </licenses>
 
     <scm>
-        <connection>scm:git:git://github.com/confluentinc/kafka-connect-jdbc.git</connection>
-        <developerConnection>scm:git:git@github.com:confluentinc/kafka-connect-jdbc.git</developerConnection>
-        <url>https://github.com/confluentinc/kafka-connect-jdbc</url>
+        <connection>scm:git:git://github.com/confluentinc/kafka-connect-jdbc-flipp-defaults.git</connection>
+        <developerConnection>scm:git:git@github.com:confluentinc/kafka-connect-jdbc-flipp-defaults.git</developerConnection>
+        <url>https://github.com/confluentinc/kafka-connect-jdbc-flipp-defaults</url>
         <tag>HEAD</tag>
     </scm>
 
@@ -305,12 +305,12 @@
                                     <mainClass>io.confluent.licenses.LicenseFinder</mainClass>
                                     <arguments>
                                         <!-- Note use of development instead of package so we pick up all dependencies. -->
-                                        <argument>-i ${project.build.directory}/${project.build.finalName}-package/share/java/kafka-connect-jdbc</argument>
+                                        <argument>-i ${project.build.directory}/${project.build.finalName}-package/share/java/kafka-connect-jdbc-flipp-defaults</argument>
                                         <argument>-o ${project.basedir}/licenses</argument>
                                         <argument>-f</argument>
-                                        <argument>-h ${project.build.directory}/${project.build.finalName}-package/share/doc/kafka-connect-jdbc/licenses.html</argument>
-                                        <argument>-l ${project.build.directory}/${project.build.finalName}-package/share/doc/kafka-connect-jdbc/licenses</argument>
-                                        <argument>-n ${project.build.directory}/${project.build.finalName}-package/share/doc/kafka-connect-jdbc/notices</argument>
+                                        <argument>-h ${project.build.directory}/${project.build.finalName}-package/share/doc/kafka-connect-jdbc-flipp-defaults/licenses.html</argument>
+                                        <argument>-l ${project.build.directory}/${project.build.finalName}-package/share/doc/kafka-connect-jdbc-flipp-defaults/licenses</argument>
+                                        <argument>-n ${project.build.directory}/${project.build.finalName}-package/share/doc/kafka-connect-jdbc-flipp-defaults/notices</argument>
                                         <argument>-t ${project.name}</argument>
                                         <argument>-x licenses-${licenses.version}.jar</argument>
                                     </arguments>
@@ -355,7 +355,7 @@
                                     <mainClass>io.confluent.licenses.LicenseFinder</mainClass>
                                     <arguments>
                                         <!-- Note use of development instead of package so we pick up all dependencies. -->
-                                        <argument>-i ${project.build.directory}/${project.build.finalName}-development/share/java/kafka-connect-jdbc</argument>
+                                        <argument>-i ${project.build.directory}/${project.build.finalName}-development/share/java/kafka-connect-jdbc-flipp-defaults</argument>
                                         <argument>-o ${project.basedir}/licenses</argument>
                                         <argument>-f</argument>
                                         <argument>-h ${project.basedir}/licenses.html</argument>

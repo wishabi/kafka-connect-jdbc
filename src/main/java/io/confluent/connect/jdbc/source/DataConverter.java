@@ -75,11 +75,11 @@ public class DataConverter {
     return struct;
   }
 
-  private static String whitelistDefaultValue(int SqlType, String defaultValue) {
+  private static String whitelistDefaultValue(int sqlType, String defaultValue) {
     if (defaultValue == null) return null;
     if (defaultValue.toLowerCase().startsWith("autoincrement")) return null;
 
-    switch (SqlType) {
+    switch (sqlType) {
       case Types.TIMESTAMP: {
         if (defaultValue.toLowerCase().contains("current_timestamp")) {
           return "2000-01-01 00:00:00";
