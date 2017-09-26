@@ -67,6 +67,8 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   @Test
   public void testDefaultBoolean() throws Exception {
     typeConversion("BOOLEAN", false, false, SchemaBuilder.bool().defaultValue(true).build(), false, "true");
+    typeConversion("BOOLEAN", true, false, SchemaBuilder.bool().optional().defaultValue(true).build(), false, "true");
+    typeConversion("BOOLEAN", true, false, SchemaBuilder.bool().optional().defaultValue(null).build(), false, "null");
   }
 
   @Test
@@ -83,6 +85,8 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   @Test
   public void testDefaultSmallInt() throws Exception {
     typeConversion("SMALLINT", false, 1, SchemaBuilder.int16().defaultValue((short) 1).build(), (short) 1, "1");
+    typeConversion("SMALLINT", true, 1, SchemaBuilder.int16().optional().defaultValue((short) 10).build(), (short) 1, "10");
+    typeConversion("SMALLINT", true, 1, SchemaBuilder.int16().optional().defaultValue(null).build(), (short) 1, "null");
   }
 
   @Test
@@ -100,6 +104,10 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   public void testDefaultInt() throws Exception {
     typeConversion("INTEGER", false, 1,
             SchemaBuilder.int32().defaultValue(1).build(), 1, "1");
+    typeConversion("INTEGER", true, 1,
+            SchemaBuilder.int32().optional().defaultValue(1).build(), 1, "1");
+    typeConversion("INTEGER", true, 1,
+            SchemaBuilder.int32().optional().defaultValue(null).build(), 1, "NULL");
   }
 
   @Test
@@ -115,7 +123,9 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
 
   @Test
   public void testDefaultBigInt() throws Exception {
-    typeConversion("BIGINT", true, 1, SchemaBuilder.int64().defaultValue((long) 1).build(), (long) 1, "1");
+    typeConversion("BIGINT", false, 1, SchemaBuilder.int64().defaultValue((long) 1).build(), (long) 1, "1");
+    typeConversion("BIGINT", true, 1, SchemaBuilder.int64().optional().defaultValue((long) 1).build(), (long) 1, "1");
+    typeConversion("BIGINT", true, 1, SchemaBuilder.int64().optional().defaultValue(null).build(), (long) 1, "null");
   }
 
   @Test
@@ -132,6 +142,8 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   @Test
   public void testDefaultReal() throws Exception {
     typeConversion("REAL", false, 1.1, SchemaBuilder.float32().defaultValue((float) 1).build(), (float) 1.1, "1");
+    typeConversion("REAL", true, 1.1, SchemaBuilder.float32().optional().defaultValue((float) 1).build(), (float) 1.1, "1");
+    typeConversion("REAL", true, 1.1, SchemaBuilder.float32().optional().defaultValue(null).build(), (float) 1.1, "null");
   }
 
   @Test
@@ -148,6 +160,8 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   @Test
   public void testDefaultDouble() throws Exception {
     typeConversion("DOUBLE", false, 1.1, SchemaBuilder.float64().defaultValue( 1.1).build(), 1.1, "1.1");
+    typeConversion("DOUBLE", true, 1.1, SchemaBuilder.float64().optional().defaultValue(1.1).build(), 1.1, "1.1");
+    typeConversion("DOUBLE", true, 1.1, SchemaBuilder.float64().optional().defaultValue(null).build(), 1.1, "null");
   }
 
   @Test
@@ -166,6 +180,8 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   @Test
   public void testDefaultChar() throws Exception {
     typeConversion("CHAR(5)", false, "a", SchemaBuilder.string().defaultValue("'b'").build(), "a    ", "'b'");
+    typeConversion("CHAR(5)", true, "a", SchemaBuilder.string().optional().defaultValue("'b'").build(), "a    ", "'b'");
+    typeConversion("CHAR(5)", true, "a", SchemaBuilder.string().optional().defaultValue(null).build(), "a    ", "NULL");
   }
 
   @Test
@@ -184,6 +200,8 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   @Test
   public void testDefaultVarChar() throws Exception {
     typeConversion("VARCHAR(5)", false, "b", SchemaBuilder.string().defaultValue("'a'").build(), "b", "'a'");
+    typeConversion("VARCHAR(5)", true, "b", SchemaBuilder.string().optional().defaultValue("'a'").build(), "b", "'a'");
+    typeConversion("VARCHAR(5)", true, "b", SchemaBuilder.string().optional().defaultValue(null).build(), "b", "null");
   }
 
   @Test
@@ -231,6 +249,10 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
   public void testDefaultBinary() throws Exception {
     typeConversion("CHAR(5) FOR BIT DATA", false, "a".getBytes(),
             SchemaBuilder.bytes().defaultValue("x'97'".getBytes()).build(), "a    ".getBytes(), "x'97'");
+    typeConversion("CHAR(5) FOR BIT DATA", true, "a".getBytes(),
+            SchemaBuilder.bytes().optional().defaultValue("x'97'".getBytes()).build(), "a    ".getBytes(), "x'97'");
+    typeConversion("CHAR(5) FOR BIT DATA", true, "a".getBytes(),
+            SchemaBuilder.bytes().optional().defaultValue(null).build(), "a    ".getBytes(), "null");
   }
 
   @Test
@@ -272,6 +294,12 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
     typeConversion("DECIMAL(5,2)", false,
             new EmbeddedDerby.Literal("CAST (123.45 AS DECIMAL(5,2))"),
             Decimal.builder(2).defaultValue(defaultVal).build(),new BigDecimal(new BigInteger("12345"), 2), "100");
+    typeConversion("DECIMAL(5,2)", true,
+            new EmbeddedDerby.Literal("CAST (123.45 AS DECIMAL(5,2))"),
+            Decimal.builder(2).optional().defaultValue(defaultVal).build(),new BigDecimal(new BigInteger("12345"), 2), "100");
+    typeConversion("DECIMAL(5,2)", true,
+            new EmbeddedDerby.Literal("CAST (123.45 AS DECIMAL(5,2))"),
+            Decimal.builder(2).optional().defaultValue(null).build(),new BigDecimal(new BigInteger("12345"), 2), "null");
   }
 
   @Test
@@ -330,8 +358,12 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
     GregorianCalendar expected = new GregorianCalendar(1970, Calendar.JANUARY, 1, 23, 3, 20);
     expected.setTimeZone(TimeZone.getTimeZone("UTC"));
     java.sql.Time defaultValue = java.sql.Time.valueOf("00:00:00");
-    typeConversion("TIME", true, "23:03:20",
+    typeConversion("TIME", false, "23:03:20",
             Time.builder().defaultValue(defaultValue).build(), expected.getTime(),  "'00:00:00'");
+    typeConversion("TIME", true, "23:03:20",
+            Time.builder().optional().defaultValue(defaultValue).build(), expected.getTime(),  "'00:00:00'");
+    typeConversion("TIME", true, "23:03:20",
+            Time.builder().optional().defaultValue(null).build(), expected.getTime(),  "null");
   }
 
   @Test
@@ -339,8 +371,7 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
     GregorianCalendar expected = new GregorianCalendar(1977, Calendar.FEBRUARY, 13, 23, 3, 20);
     expected.setTimeZone(TimeZone.getTimeZone("UTC"));
     typeConversion("TIMESTAMP", false, "1977-02-13 23:03:20",
-                   Timestamp.builder().build(),
-                   expected.getTime());
+                   Timestamp.builder().build(), expected.getTime());
   }
 
   @Test
@@ -362,6 +393,10 @@ public class JdbcSourceTaskConversionTest extends JdbcSourceTaskTestBase {
     java.sql.Timestamp defaultValue = java.sql.Timestamp.valueOf("2000-01-01 00:00:00");
     typeConversion("TIMESTAMP", false, "1977-02-13 23:03:20",
             Timestamp.builder().defaultValue(defaultValue).build(), expected.getTime(), "CURRENT_TIMESTAMP");
+    typeConversion("TIMESTAMP", true, "1977-02-13 23:03:20",
+            Timestamp.builder().optional().defaultValue(defaultValue).build(), expected.getTime(), "CURRENT_TIMESTAMP");
+    typeConversion("TIMESTAMP", true, "1977-02-13 23:03:20",
+            Timestamp.builder().optional().defaultValue(null).build(), expected.getTime(), "null");
   }
 
   // Derby has an XML type, but the JDBC driver doesn't implement any of the type bindings,
