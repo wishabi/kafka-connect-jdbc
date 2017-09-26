@@ -118,7 +118,13 @@ public class DataConverter {
     int sqlType = metadata.getColumnType(col);
 
     String defaultValue = whitelistDefaultValue(sqlType, columnDefaults.get(name));
-    boolean hasDefault = (defaultValue != null);
+    boolean hasDefault = false;
+    boolean defaultIsNull = false;
+    if (defaultValue != null) {
+      hasDefault = true;
+      defaultIsNull = defaultValue.equalsIgnoreCase("null");
+    }
+
 
     boolean optional = false;
     if (metadata.isNullable(col) == ResultSetMetaData.columnNullable ||
@@ -126,7 +132,6 @@ public class DataConverter {
       optional = true;
     }
 
-    Schema schema;
     switch (sqlType) {
       case Types.NULL: {
         log.warn("JDBC type {} not currently supported", sqlType);
@@ -134,126 +139,137 @@ public class DataConverter {
       }
 
       case Types.BOOLEAN: {
-        if (hasDefault) {
-          boolean castedDefault = Boolean.parseBoolean(defaultValue);
-          schema = SchemaBuilder.bool().defaultValue(castedDefault).build();
-        } else {
-          schema = (optional) ? Schema.OPTIONAL_BOOLEAN_SCHEMA : Schema.BOOLEAN_SCHEMA;
+        SchemaBuilder fieldBuilder = SchemaBuilder.bool();
+        if (optional) {
+          fieldBuilder.optional();
         }
-        builder.field(fieldName, schema);
+        if (hasDefault) {
+          Boolean parsedDefault = defaultIsNull ? null : Boolean.parseBoolean(defaultValue);
+          fieldBuilder.defaultValue(parsedDefault);
+        }
+        builder.field(fieldName, fieldBuilder.build());
         break;
       }
 
       // ints <= 8 bits
       case Types.BIT: {
-        if (hasDefault) {
-          byte castedDefault = Byte.parseByte(defaultValue);
-          schema = SchemaBuilder.int8().defaultValue(castedDefault).build();
-        } else {
-          schema = (optional) ? Schema.OPTIONAL_INT8_SCHEMA : Schema.INT8_SCHEMA;
+        SchemaBuilder fieldBuilder = SchemaBuilder.int8();
+        if (optional) {
+          fieldBuilder.optional();
         }
-        builder.field(fieldName, schema);
+        if (hasDefault) {
+          Byte parsedDefault = defaultIsNull ? null : Byte.parseByte(defaultValue);
+          fieldBuilder.defaultValue(parsedDefault);
+        }
+        builder.field(fieldName, fieldBuilder.build());
         break;
       }
 
       case Types.TINYINT: {
-        if (hasDefault) {
-          if (metadata.isSigned(col)) {
-            short castedDefault = Short.parseShort(defaultValue);
-            builder.field(fieldName, SchemaBuilder.int8().defaultValue(castedDefault).build());
-          } else {
-            int castedDefault = Integer.parseInt(defaultValue);
-            builder.field(fieldName, SchemaBuilder.int16().defaultValue(castedDefault).build());
+        if (metadata.isSigned(col)) {
+          SchemaBuilder fieldBuilder = SchemaBuilder.int8();
+          if (optional) {
+            fieldBuilder.optional();
           }
-        } else if (optional) {
-          if (metadata.isSigned(col)) {
-            builder.field(fieldName, Schema.OPTIONAL_INT8_SCHEMA);
-          } else {
-            builder.field(fieldName, Schema.OPTIONAL_INT16_SCHEMA);
+          if (hasDefault) {
+            Byte parsedDefault = defaultIsNull ? null : Byte.parseByte(defaultValue);
+            fieldBuilder.defaultValue(parsedDefault);
           }
+          builder.field(fieldName, fieldBuilder.build());
         } else {
-          if (metadata.isSigned(col)) {
-            builder.field(fieldName, Schema.INT8_SCHEMA);
-          } else {
-            builder.field(fieldName, Schema.INT16_SCHEMA);
+          SchemaBuilder fieldBuilder = SchemaBuilder.int16();
+          if (optional) {
+            fieldBuilder.optional();
           }
+          if (hasDefault) {
+            Short parsedDefault = defaultIsNull ? null : Short.parseShort(defaultValue);
+            fieldBuilder.defaultValue(parsedDefault);
+          }
+          builder.field(fieldName, fieldBuilder.build());
         }
+
         break;
       }
 
       // 16 bit ints
       case Types.SMALLINT: {
-        if (hasDefault) {
-          if (metadata.isSigned(col)) {
-            short parsedDefault = Short.parseShort(defaultValue);
-            builder.field(fieldName, SchemaBuilder.int16().defaultValue(parsedDefault).build());
-          } else {
-            int parsedDefault = Integer.parseInt(defaultValue);
-            builder.field(fieldName, SchemaBuilder.int32().defaultValue(parsedDefault).build());
+        if (metadata.isSigned(col)) {
+          SchemaBuilder fieldBuilder = SchemaBuilder.int16();
+          if (optional) {
+            fieldBuilder.optional();
           }
-        } else if (optional) {
-          if (metadata.isSigned(col)) {
-            builder.field(fieldName, Schema.OPTIONAL_INT16_SCHEMA);
-          } else {
-            builder.field(fieldName, Schema.OPTIONAL_INT32_SCHEMA);
+          if (hasDefault) {
+            Short parsedDefault = defaultIsNull ? null : Short.parseShort(defaultValue);
+            fieldBuilder.defaultValue(parsedDefault);
           }
+          builder.field(fieldName, fieldBuilder.build());
         } else {
-          if (metadata.isSigned(col)) {
-            builder.field(fieldName, Schema.INT16_SCHEMA);
-          } else {
-            builder.field(fieldName, Schema.INT32_SCHEMA);
+          SchemaBuilder fieldBuilder = SchemaBuilder.int32();
+          if (optional) {
+            fieldBuilder.optional();
           }
+          if (hasDefault) {
+            Integer parsedDefault = defaultIsNull ? null : Integer.parseInt(defaultValue);
+            fieldBuilder.defaultValue(parsedDefault);
+          }
+          builder.field(fieldName, fieldBuilder.build());
         }
+
         break;
       }
 
       // 32 bit ints
       case Types.INTEGER: {
-        if (hasDefault) {
-          if (metadata.isSigned(col)) {
-            int parsedDefault = Integer.parseInt(defaultValue);
-            builder.field(fieldName, SchemaBuilder.int32().defaultValue(parsedDefault).build());
-          } else {
-            long parsedDefault = Long.parseLong(defaultValue);
-            builder.field(fieldName, SchemaBuilder.int64().defaultValue(parsedDefault).build());
+        if (metadata.isSigned(col)) {
+          SchemaBuilder fieldBuilder = SchemaBuilder.int32();
+          if (optional) {
+            fieldBuilder.optional();
           }
-        } else if (optional) {
-          if (metadata.isSigned(col)) {
-            builder.field(fieldName, Schema.OPTIONAL_INT32_SCHEMA);
-          } else {
-            builder.field(fieldName, Schema.OPTIONAL_INT64_SCHEMA);
+          if (hasDefault) {
+            Integer parsedDefault = defaultIsNull ? null : Integer.parseInt(defaultValue);
+            fieldBuilder.defaultValue(parsedDefault);
           }
+          builder.field(fieldName, fieldBuilder.build());
         } else {
-          if (metadata.isSigned(col)) {
-            builder.field(fieldName, Schema.INT32_SCHEMA);
-          } else {
-            builder.field(fieldName, Schema.INT64_SCHEMA);
+          SchemaBuilder fieldBuilder = SchemaBuilder.int64();
+          if (optional) {
+            fieldBuilder.optional();
           }
+          if (hasDefault) {
+            Long parsedDefault = defaultIsNull ? null : Long.parseLong(defaultValue);
+            fieldBuilder.defaultValue(parsedDefault);
+          }
+          builder.field(fieldName, fieldBuilder.build());
         }
+
         break;
       }
 
       // 64 bit ints
       case Types.BIGINT: {
-        if (hasDefault) {
-          long parsedDefault = Long.parseLong(defaultValue);
-          schema = SchemaBuilder.int64().defaultValue(parsedDefault).build();
-        } else {
-          schema = (optional) ? Schema.OPTIONAL_INT64_SCHEMA : Schema.INT64_SCHEMA;
+        SchemaBuilder fieldBuilder = SchemaBuilder.int64();
+        if (optional) {
+          fieldBuilder.optional();
         }
-        builder.field(fieldName, schema);
+        if (hasDefault) {
+          Long parsedDefault = defaultIsNull ? null : Long.parseLong(defaultValue);
+          fieldBuilder.defaultValue(parsedDefault);
+        }
+        builder.field(fieldName, fieldBuilder.build());
         break;
       }
 
       // REAL is a single precision floating point value, i.e. a Java float
       case Types.REAL: {
-        if (hasDefault) {
-          float parsedDefault = Float.parseFloat(defaultValue);
-          schema = SchemaBuilder.float32().defaultValue(parsedDefault).build();
-        } else {
-          schema = (optional) ? Schema.OPTIONAL_FLOAT32_SCHEMA : Schema.FLOAT32_SCHEMA;
+        SchemaBuilder fieldBuilder = SchemaBuilder.float32();
+        if (optional) {
+          fieldBuilder.optional();
         }
-        builder.field(fieldName, schema);
+        if (hasDefault) {
+          Float parsedDefault = defaultIsNull ? null : Float.parseFloat(defaultValue);
+          fieldBuilder.defaultValue(parsedDefault);
+        }
+        builder.field(fieldName, fieldBuilder.build());
         break;
       }
 
@@ -261,13 +277,15 @@ public class DataConverter {
       // for single precision
       case Types.FLOAT:
       case Types.DOUBLE: {
-        if (hasDefault) {
-          double parsedDefault = Double.parseDouble(defaultValue);
-          schema = SchemaBuilder.float64().defaultValue(parsedDefault).build();
-        } else {
-          schema = (optional) ? Schema.OPTIONAL_FLOAT64_SCHEMA : Schema.FLOAT64_SCHEMA;
+        SchemaBuilder fieldBuilder = SchemaBuilder.float64();
+        if (optional) {
+          fieldBuilder.optional();
         }
-        builder.field(fieldName, schema);
+        if (hasDefault) {
+          Double parsedDefault = defaultIsNull ? null : Double.parseDouble(defaultValue);
+          fieldBuilder.defaultValue(parsedDefault);
+        }
+        builder.field(fieldName, fieldBuilder.build());
         break;
       }
 
@@ -276,35 +294,46 @@ public class DataConverter {
           int precision = metadata.getPrecision(col);
           if (metadata.getScale(col) == 0 && precision < 19) { // integer
             if (precision > 9) {
-              if (hasDefault) {
-                long parsedDefault = Long.parseLong(defaultValue);
-                schema = SchemaBuilder.int64().defaultValue(parsedDefault).build();
-              } else {
-                schema = (optional) ? Schema.OPTIONAL_INT64_SCHEMA : Schema.INT64_SCHEMA;
+              SchemaBuilder fieldBuilder = SchemaBuilder.int64();
+              if (optional) {
+                fieldBuilder.optional();
               }
+              if (hasDefault) {
+                Long parsedDefault = defaultIsNull ? null : Long.parseLong(defaultValue);
+                fieldBuilder.defaultValue(parsedDefault);
+              }
+              builder.field(fieldName, fieldBuilder.build());
             } else if (precision > 4) {
-              if (hasDefault) {
-                int parsedDefault = Integer.parseInt(defaultValue);
-                schema = SchemaBuilder.int32().defaultValue(parsedDefault).build();
-              } else {
-                schema = (optional) ? Schema.OPTIONAL_INT32_SCHEMA : Schema.INT32_SCHEMA;
+              SchemaBuilder fieldBuilder = SchemaBuilder.int32();
+              if (optional) {
+                fieldBuilder.optional();
               }
+              if (hasDefault) {
+                Integer parsedDefault = defaultIsNull ? null : Integer.parseInt(defaultValue);
+                fieldBuilder.defaultValue(parsedDefault);
+              }
+              builder.field(fieldName, fieldBuilder.build());
             } else if (precision > 2) {
-              if (hasDefault) {
-                short parsedDefault = Short.parseShort(defaultValue);
-                schema = SchemaBuilder.int16().defaultValue(parsedDefault).build();
-              } else {
-                schema = (optional) ? Schema.OPTIONAL_INT16_SCHEMA : Schema.INT16_SCHEMA;
+              SchemaBuilder fieldBuilder = SchemaBuilder.int16();
+              if (optional) {
+                fieldBuilder.optional();
               }
+              if (hasDefault) {
+                Short parsedDefault = defaultIsNull ? null : Short.parseShort(defaultValue);
+                fieldBuilder.defaultValue(parsedDefault);
+              }
+              builder.field(fieldName, fieldBuilder.build());
             } else {
-              if (hasDefault) {
-                byte parsedDefault = Byte.parseByte(defaultValue);
-                schema = SchemaBuilder.int8().defaultValue(parsedDefault).build();
-              } else {
-                schema = (optional) ? Schema.OPTIONAL_INT8_SCHEMA : Schema.INT8_SCHEMA;
+              SchemaBuilder fieldBuilder = SchemaBuilder.int8();
+              if (optional) {
+                fieldBuilder.optional();
               }
+              if (hasDefault) {
+                Byte parsedDefault = defaultIsNull ? null : Byte.parseByte(defaultValue);
+                fieldBuilder.defaultValue(parsedDefault);
+              }
+              builder.field(fieldName, fieldBuilder.build());
             }
-            builder.field(fieldName, schema);
             break;
           }
         }
@@ -315,12 +344,17 @@ public class DataConverter {
         if (scale == -127) //NUMBER without precision defined for OracleDB
           scale = 127;
         SchemaBuilder fieldBuilder = Decimal.builder(scale);
-        if (hasDefault) {
-          long parsedDefault = Long.parseLong(defaultValue);
-          BigDecimal scaledDefault = BigDecimal.valueOf(parsedDefault, scale);
-          fieldBuilder.defaultValue(scaledDefault).build();
-        } else if (optional) {
+        if (optional) {
           fieldBuilder.optional();
+        }
+        if (hasDefault) {
+          if (defaultIsNull) {
+            fieldBuilder.defaultValue(null);
+          } else {
+            Long parsedDefault = Long.parseLong(defaultValue);
+            BigDecimal scaledDefault = BigDecimal.valueOf(parsedDefault, scale);
+            fieldBuilder.defaultValue(scaledDefault);
+          }
         }
         builder.field(fieldName, fieldBuilder.build());
         break;
@@ -338,12 +372,15 @@ public class DataConverter {
       case Types.SQLXML: {
         // Some of these types will have fixed size, but we drop this from the schema conversion
         // since only fixed byte arrays can have a fixed size
-        if (hasDefault) {
-          schema = SchemaBuilder.string().defaultValue(defaultValue).build();
-        } else {
-          schema = (optional) ? Schema.OPTIONAL_STRING_SCHEMA : Schema.STRING_SCHEMA;
+        SchemaBuilder fieldBuilder = SchemaBuilder.string();
+        if (optional) {
+          fieldBuilder.optional();
         }
-        builder.field(fieldName, schema);
+        if (hasDefault) {
+          String parsedDefault = defaultIsNull ? null : defaultValue;
+          fieldBuilder.defaultValue(parsedDefault);
+        }
+        builder.field(fieldName, fieldBuilder.build());
         break;
       }
 
@@ -353,22 +390,28 @@ public class DataConverter {
       case Types.BLOB:
       case Types.VARBINARY:
       case Types.LONGVARBINARY: {
-        if (hasDefault) {
-          schema = SchemaBuilder.bytes().defaultValue(defaultValue.getBytes()).build();
-        } else {
-          schema = (optional) ? Schema.OPTIONAL_BYTES_SCHEMA : Schema.BYTES_SCHEMA;
+        SchemaBuilder fieldBuilder = SchemaBuilder.bytes();
+        if (optional) {
+          fieldBuilder.optional();
         }
-        builder.field(fieldName, schema);
+        if (hasDefault) {
+          byte[] parsedDefault = defaultIsNull ? null : defaultValue.getBytes();
+          fieldBuilder.defaultValue(parsedDefault);
+        }
+        builder.field(fieldName, fieldBuilder.build());
         break;
       }
 
       // Date is day + moth + year
       case Types.DATE: {
         SchemaBuilder dateSchemaBuilder = Date.builder();
-        if (hasDefault) {
-          dateSchemaBuilder.defaultValue(java.sql.Date.valueOf(defaultValue.replace("'", "")));
-        } else if (optional) {
+        if (optional) {
           dateSchemaBuilder.optional();
+        }
+        if (hasDefault) {
+          java.sql.Date parsedDefault = defaultIsNull ?
+                  null : java.sql.Date.valueOf(defaultValue.replace("'", ""));
+          dateSchemaBuilder.defaultValue(parsedDefault);
         }
         builder.field(fieldName, dateSchemaBuilder.build());
         break;
@@ -377,10 +420,13 @@ public class DataConverter {
       // Time is a time of day -- hour, minute, seconds, nanoseconds
       case Types.TIME: {
         SchemaBuilder timeSchemaBuilder = Time.builder();
-        if (hasDefault) {
-          timeSchemaBuilder.defaultValue(java.sql.Time.valueOf(defaultValue.replace("'", "")));
-        } else if (optional) {
+        if (optional) {
           timeSchemaBuilder.optional();
+        }
+        if (hasDefault) {
+          java.sql.Time parsedDefault = defaultIsNull ?
+                  null : java.sql.Time.valueOf(defaultValue.replace("'", ""));
+          timeSchemaBuilder.defaultValue(parsedDefault);
         }
         builder.field(fieldName, timeSchemaBuilder.build());
         break;
@@ -389,10 +435,13 @@ public class DataConverter {
       // Timestamp is a date + time
       case Types.TIMESTAMP: {
         SchemaBuilder tsSchemaBuilder = Timestamp.builder();
-        if (hasDefault) {
-          tsSchemaBuilder.defaultValue(java.sql.Timestamp.valueOf(defaultValue.replace("'", "")));
-        } else if (optional) {
+        if (optional) {
           tsSchemaBuilder.optional();
+        }
+        if (hasDefault) {
+          java.sql.Timestamp parsedDefault = defaultIsNull ?
+                  null : java.sql.Timestamp.valueOf(defaultValue.replace("'", ""));
+          tsSchemaBuilder.defaultValue(parsedDefault);
         }
         builder.field(fieldName, tsSchemaBuilder.build());
         break;
