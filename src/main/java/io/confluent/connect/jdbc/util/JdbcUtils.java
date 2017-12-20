@@ -191,6 +191,8 @@ public class JdbcUtils {
       query = "select CURRENT_TIMESTAMP from dual";
     else if ("Apache Derby".equals(dbProduct))
       query = "values(CURRENT_TIMESTAMP)";
+    else if (dbProduct.contains("MySQL"))
+      query = "select UTC_TIMESTAMP;";
     else
       query = "select CURRENT_TIMESTAMP;";
 
