@@ -42,7 +42,7 @@ with the connector in ``./etc/kafka-connect-jdbc/source-quickstart-sqlite.proper
 following settings::
 
    name=test-sqlite-jdbc-autoincrement
-   connector.class=io.confluent.connect.jdbc.JdbcSourceConnector
+   connector.class=io.confluent.connect.jdbc.JdbcFlippDefaultsSourceConnector
    tasks.max=1
    connection.url=jdbc:sqlite:test.db
    mode=incrementing
@@ -202,7 +202,7 @@ modification timestamps to guarantee modifications are not missed even if the pr
 middle of an incremental update query. ::
 
    name=mysql-whitelist-timestamp-source
-   connector.class=io.confluent.connect.jdbc.JdbcSourceConnector
+   connector.class=io.confluent.connect.jdbc.JdbcFlippDefaultsSourceConnector
    tasks.max=10
 
    connection.url=jdbc:mysql://mysql.example.com:3306/my_database?user=alice&password=secret
@@ -221,7 +221,7 @@ output per connector and because there is no table name, the topic "prefix" is a
 topic name in this case. ::
 
    name=mysql-whitelist-timestamp-source
-   connector.class=io.confluent.connect.jdbc.JdbcSourceConnector
+   connector.class=io.confluent.connect.jdbc.JdbcFlippDefaultsSourceConnector
    tasks.max=10
 
    connection.url=jdbc:postgresql://postgres.example.com/test_db?user=bob&password=secret&ssl=true

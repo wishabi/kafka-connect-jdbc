@@ -46,17 +46,17 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 @RunWith(PowerMockRunner.class)
-@PrepareForTest({JdbcSourceConnector.class, JdbcUtils.class})
+@PrepareForTest({JdbcFlippDefaultsSourceConnector.class, JdbcUtils.class})
 @PowerMockIgnore("javax.management.*")
-public class JdbcSourceConnectorTest {
+public class JdbcFlippDefaultsSourceConnectorTest {
 
-  private JdbcSourceConnector connector;
+  private JdbcFlippDefaultsSourceConnector connector;
   private EmbeddedDerby db;
   private Map<String, String> connProps;
 
   @Before
   public void setup() {
-    connector = new JdbcSourceConnector();
+    connector = new JdbcFlippDefaultsSourceConnector();
     db = new EmbeddedDerby();
     connProps = new HashMap<>();
     connProps.put(JdbcSourceConnectorConfig.CONNECTION_URL_CONFIG, db.getUrl());

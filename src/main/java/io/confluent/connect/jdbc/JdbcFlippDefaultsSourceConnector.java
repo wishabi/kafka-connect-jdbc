@@ -46,9 +46,9 @@ import io.confluent.connect.jdbc.util.Version;
  * JdbcConnector is a Kafka Connect Connector implementation that watches a JDBC database and
  * generates tasks to ingest database contents.
  */
-public class JdbcSourceConnector extends SourceConnector {
+public class JdbcFlippDefaultsSourceConnector extends SourceConnector {
 
-  private static final Logger log = LoggerFactory.getLogger(JdbcSourceConnector.class);
+  private static final Logger log = LoggerFactory.getLogger(JdbcFlippDefaultsSourceConnector.class);
 
   private static final long MAX_TIMEOUT = 10000L;
 
@@ -68,7 +68,7 @@ public class JdbcSourceConnector extends SourceConnector {
       configProperties = properties;
       config = new JdbcSourceConnectorConfig(configProperties);
     } catch (ConfigException e) {
-      throw new ConnectException("Couldn't start JdbcSourceConnector due to configuration "
+      throw new ConnectException("Couldn't start JdbcFlippDefaultsSourceConnector due to configuration "
                                  + "error", e);
     }
 

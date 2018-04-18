@@ -23,7 +23,7 @@ Let's create a configuration file for the connector.
 This file is included with the connector in ``./etc/kafka-connect-jdbc/sink-quickstart-sqlite.properties`` and contains the following settings::
 
     name=test-sink
-    connector.class=io.confluent.connect.jdbc.JdbcSinkConnector
+    connector.class=io.confluent.connect.jdbc.JdbcFlippDefaultsSinkConnector
     tasks.max=1
     topics=orders
     connection.url=jdbc:sqlite:test.db
